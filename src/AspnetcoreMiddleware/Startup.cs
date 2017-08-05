@@ -21,16 +21,46 @@ namespace AspnetcoreMiddleware
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
         {
-            loggerFactory.AddConsole();
-
-            if (env.IsDevelopment())
+            app.Use(async (context, next) =>
             {
-                app.UseDeveloperExceptionPage();
-            }
+                await context.Response.WriteAsync("First middleware starts, ");
+                await next.Invoke();
+                await context.Response.WriteAsync("First middleware ends, ");
+            });
 
+            app.Map("/mymapbranch", (appBuilder) =>
+            {
+                appBuilder.Use(async (context, next) =>
+                {
+                    await context.Response.WriteAsync("Second middleware starts, ");
+                    await next.Invoke();
+                    await context.Response.WriteAsync("Second middleware ends, ");
+                });
+                appBuilder.Run(async (context) =>
+                {
+                    context.Response.WriteAsync("hey from mymapbranch, ");
+                });
+            });
+
+            app.MapWhen(context => context.Request.Query.ContainsKey("mymapwhen"), (appBuilder) =>
+            {
+                appBuilder.Use(async (context, next) =>
+                {
+                    await context.Response.WriteAsync("Third middleware starts, ");
+                    await next.Invoke();
+                    await context.Response.WriteAsync("Third middleware ends, ");
+                });
+                appBuilder.Run(async (context) =>
+                {
+                    context.Response.WriteAsync("hey from mymapwhen, ");
+                });
+            });
+
+            // app.Run is pipeline terminator
+            // this will never be executed when it branches out into /mymapbranch
             app.Run(async (context) =>
             {
-                await context.Response.WriteAsync("Hello World!");
+                await context.Response.WriteAsync("Hello World!, ");
             });
         }
     }
