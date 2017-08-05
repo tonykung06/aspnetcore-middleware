@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Routing;
 
 namespace AspnetcoreMiddleware
 {
@@ -28,6 +29,11 @@ namespace AspnetcoreMiddleware
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddOptions();
+            services.AddCors();
+            services.AddRouting();
+            services.AddDistributedMemoryCache();
+            services.AddSession();
+            
             var myMiddlewareOptions = Configuration.GetSection("MyMiddlewareSection");
             services.Configure<MyMiddlewareOptions>(option => option.OptionOne = myMiddlewareOptions["OptionOne"]);
         }
@@ -35,8 +41,33 @@ namespace AspnetcoreMiddleware
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
         {
+            if (env.IsDevelopment())
+            {
+                app.UseDeveloperExceptionPage();
+            }
+
+            app.UseStaticFiles();
+
+            app.UseSession();
+
+            var routeBuilder = new RouteBuilder(app);
+            routeBuilder.MapGet("greeting/{name}", appBuilder =>
+            {
+                appBuilder.Run(async context => {
+                    await context.Response.WriteAsync($"greeting to {context.GetRouteValue("name")}");
+                });
+            });
+            app.UseRouter(routeBuilder.Build());
+
+            app.UseCors(policyBuilder =>
+            {
+                policyBuilder.WithOrigins("http://localhost:5000");
+            });
+
             app.Use(async (context, next) =>
             {
+                context.Session.SetString("session_var_1", "session_var_1_value");
+
                 await context.Response.WriteAsync("First middleware starts, ");
                 await next.Invoke();
                 await context.Response.WriteAsync("First middleware ends, ");
@@ -76,7 +107,9 @@ namespace AspnetcoreMiddleware
             // this will never be executed when it branches out into /mymapbranch
             app.Run(async (context) =>
             {
-                await context.Response.WriteAsync($"Hello World!, {context.Items["message_from_MyMiddleware"]}, ");
+                await context.Response.WriteAsync(
+                    $"Hello World!, {context.Items["message_from_MyMiddleware"]}, {context.Session.GetString("session_var_1")}, "
+                );
             });
         }
     }
