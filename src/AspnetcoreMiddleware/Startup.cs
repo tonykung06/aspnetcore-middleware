@@ -76,7 +76,7 @@ namespace AspnetcoreMiddleware
             // this will never be executed when it branches out into /mymapbranch
             app.Run(async (context) =>
             {
-                await context.Response.WriteAsync("Hello World!, ");
+                await context.Response.WriteAsync($"Hello World!, {context.Items["message_from_MyMiddleware"]}, ");
             });
         }
     }

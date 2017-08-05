@@ -28,6 +28,9 @@ namespace AspnetcoreMiddleware
             var logger = _loggerFactory.CreateLogger("MyMiddleware");
             logger.LogInformation("testing", _options.Value.OptionOne);
 
+            // used for passing data from one middleware to other middlewares
+            context.Items["message_from_MyMiddleware"] = "hey from MyMiddleware";
+
             await context.Response.WriteAsync($"hello from MyMiddleware, {_options.Value.OptionOne}, ");
             await _next.Invoke(context);
         }
